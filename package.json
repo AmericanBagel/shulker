@@ -1,0 +1,26 @@
+{
+  "name": "shulker",
+  "version": "1.0.0",
+  "description": "A CLI tool for converting Minecraft structures to block models",
+  "main": "shulker.js",
+  "scripts": {
+    "test": "node shulker.js"
+  },
+  "keywords": [
+    "minecraft",
+    "java",
+    "java-edition",
+    "datapack",
+    "resourcepack",
+    "convert",
+    "cli",
+    "commandline",
+    "tool"
+  ],
+  "author": "AmericanBagel",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "prismarine-nbt": "^2.2.1"
+  }
+}
