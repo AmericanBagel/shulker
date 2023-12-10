@@ -442,11 +442,9 @@ async function main(file, options = {culling: "full"}) {
   function cullEnclosed() {
     // Cull blocks which are surrounded by solid blocks on all faces
     structure.blocks = structure.blocks.filter(block => {
-      console.log(block);
       const getBlock = pos => structure.blocks.find(b => compareArrays(b.pos, pos));
       const isSolid = block => SOLID.includes(removeNamespace(block.name));
 
-      console.log(JSON.stringify(structure.blocks, null, 2));
       // Cull blocks which are surrounded by solid blocks on all faces
       structure.blocks = structure.blocks.filter(block => {
         // Check if all adjacent faces of the block are solid
