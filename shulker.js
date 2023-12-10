@@ -2,6 +2,7 @@ const fs = require('fs/promises');
 const createWriteStream = require('fs').createWriteStream;
 const path = require('path');
 const nbt = require('prismarine-nbt');
+const _ = require('lodash');
 
 const assetsPath = path.normalize("mcmeta/assets")
 const blockModelsPath = path.normalize(assetsPath + "/minecraft/models/block")
@@ -370,16 +371,60 @@ const compareArrays = (a, b) =>
 const removeNamespace = (string) => string.replace('minecraft:','');
 
 /**
- * Retrieves the block model for the specified block name.
+ * Retrieves the block model for the specified block name, without descending into parent models.
  *
  * @param {string} blockName - The name of the block.
  * @param {string} assetsPath - The path to the assets directory.
  * @return {Object} The block model as a JSON object.
  */
-async function getBlockModel(blockName, assetsPath) {
-  const fullPath = path.normalize(`${blockModelsPath}/${blockName}.json`)
+async function getSingleBlockModel(blockName, assetsPath) {
+  const fullPath = path.normalize(`${blockModelsPath}/${removeNamespace(blockName)}.json`)
   const buffer = await fs.readFile(fullPath);
   return JSON.parse(buffer);
+}
+
+/**
+ * Merges two or more objects, recursively combining any child objects.
+ * Later objects' properties take precedence over earlier objects'.
+ *
+ * @param {...Object} objects - The objects to merge.
+ * @return {Object} The merged object.
+ */
+const mergeObjects = (...objects) => {
+  return objects.reduce((accumulator, current) => {
+    Object.keys(current).forEach(key => {
+      if (current[key] instanceof Object && key in accumulator) {
+        accumulator[key] = mergeObjects(accumulator[key], current[key]);
+      } else {
+        accumulator[key] = current[key];
+      }
+    });
+    return accumulator;
+  }, {});
+};
+
+async function getBlockModel(blockName, assetsPath) {
+  let model = await getSingleBlockModel(blockName, assetsPath);
+  let parentModelNames = [];
+
+  // Build a FILO list of parent models
+  while (model.parent) {
+    const parentName = model.parent
+      .replace(/(^minecraft:block\/)|(^block\/)/, '');
+    parentModelNames.push(parentName);
+    model = await getSingleBlockModel(parentName, assetsPath);
+  }
+
+  // Start with the highest parent model and merge with children
+  let mergedModel = model;
+  while (parentModelNames.length > 0) {
+    const childModelName = parentModelNames.pop();
+    const childModel = await getSingleBlockModel(childModelName, assetsPath);
+    // Assuming a merge function exists that merges child model into parent
+    mergedModel = mergeObjects(mergedModel, childModel);
+  }
+
+  return mergedModel;
 }
 
 async function main(file, options = {culling: "full"}) {
@@ -415,14 +460,15 @@ async function main(file, options = {culling: "full"}) {
       - [x] Cull any blocks which are completely surrounded by opaque blocks (should get rid of filled-in area blocks and just leave perimeter in, for example, the ground)
       - [ ] Add advanced culling methods later -- these two methods should get rid of over 50% of the lag
     - [ ] For each block type/state (by block type to only have to grab the model once!):
-      - [ ] Grab the block model
-      - [ ] Scale element sizes (from, to) based on scale
-      - [ ] Add block model name prefix to each of the textures
-      - [ ] Push textures to model's textures
-      - [ ] Map the textures in the current block model to add the prefix
-      - [ ] For each block in block states:
-        - [ ] Offset (add) element positions the block's position in the structure
-        - [ ] Add elements
+      - [x] Grab the block model
+      - [x] Merge any parent models
+      - [x] Scale element sizes (from, to) based on scale
+      - [x] Add block model name prefix to each of the textures
+      - [x] Push textures to model's textures
+      - [x] Map the textures in the current block model to add the prefix
+      - [x] For each block in block states:
+        - [x] Offset (add) element positions the block's position in the structure
+        - [x] Add elements
   */
 
   // Add name field to block because states are annoying
@@ -476,9 +522,82 @@ async function main(file, options = {culling: "full"}) {
     await cull();
   }
 
-  structure.palette.forEach(blockState => {
-    console.log(blockState);
+  // Processing for each block state
+  await structure.palette.forEach(async blockState => {
+    // Retrieve block model with parents merged
+    const blockModel = await getBlockModel(removeNamespace(blockState.Name), assetsPath);
+
+    const largestDimension = Math.max(...structure.size);
+
+    /**
+     * Whole block model needs to fit within 16^3.
+     * There are `largestDimension` number of blocks in the structure to put into the model
+     * Block models are currently on a scale of 16x16x16, and need to be divided by largestDimension to fit within 16^3
+     * Maybe the model size can be scaled to 48^3 (or 3^3 blocks), but this is not necessary right now -- scaling can be done in display options
+    */
+    // Scale element sizes based on scale
+    await blockModel.elements.map(element => {
+      function size(array) {
+        return array.map(e => e/largestDimension);
+      }
+
+      element.from = scale(element.from);
+      element.to = scale(element.to);
+
+      // Scale UV quadruple based on scale
+      /* if (element.faces) {
+        Object.keys(element.faces).forEach(face => {
+          element.faces[face].uv = scale(element.faces[face].uv);
+        })
+      } */
+      return element;
+    })
+
+   // Add block model name prefix to the key of the textures, e.g. "bottom" => "dirt_bottom"
+   blockModel.textures = Object.keys(blockModel.textures).reduce((obj, key) => {
+     obj[removeNamespace(blockState.Name)+key] = blockModel.textures[key];
+     return obj
+   })
+
+   // Add all block model texture properties to model's textures object
+   Object.keys(blockModel.textures).forEach(key => {
+     structure.textures[key] = blockModel.textures[key];
+   })
+
+   // TODO: Deal with block state properties including rotation
+
+   // Add block model to block state
+   blockState.model = blockModel;
   })
+
+  /*
+  Models look like this:
+  ```
+  {
+    "pos": number[], (triple of coords of block in structure)
+    "state": number (index of block state in palette)
+  }
+  ```
+  */
+  // Manage individual blocks and add them to model
+  /* await structure.blocks.forEach(block => {
+    // WARNING: If you want to optimize something, OPTIMIZE THIS!
+    // Deep cloning for each block is a HORRIBLE idea. TODO: Replace deep cloning whole block model with just cloning elements
+    const blockState = _.cloneDeep(structure.palette[block.state]);
+
+    // Offset element.from and element.to positions by the block's position (block.pos) relative to the structure
+    blockState.elements = blockState.elements.map(element => {
+      function offset(array) {
+        return array.map((e, i) => e + block.pos[i]);
+      }
+
+      element.from = offset(element.from);
+      element.to = offset(element.to);
+
+      // Add block state elements to block model elements
+      model.elements.push(...blockState.elements);
+    })
+  }); */
 }
 
 main('structure.nbt');
