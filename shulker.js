@@ -377,8 +377,8 @@ const removeNamespace = (string) => string.replace('minecraft:','');
  * @param {string} assetsPath - The path to the assets directory.
  * @return {Object} The block model as a JSON object.
  */
-async function getSingleBlockModel(blockName, assetsPath) {
-  const fullPath = path.normalize(`${blockModelsPath}/${removeNamespace(blockName)}.json`)
+async function getSingleBlockModel(blockName, assetsPath = "mcmeta/assets/minecraft/models/block") {
+  const fullPath = path.normalize(`${assetsPath}/${removeNamespace(blockName)}.json`)
   const buffer = await fs.readFile(fullPath);
   return JSON.parse(buffer);
 }
