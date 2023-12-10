@@ -347,6 +347,13 @@ const SOLID = [
   "yellow_wool"
 ]
 
+/**
+ * Compares two arrays to check if they are equal.
+ *
+ * @param {Array} a - The first array to compare.
+ * @param {Array} b - The second array to compare.
+ * @return {boolean} Returns true if the arrays are equal, false otherwise.
+ */
 const compareArrays = (a, b) =>
   a.length === b.length && a.every((element, index) => element === b[index]);
 
