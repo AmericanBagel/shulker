@@ -424,6 +424,17 @@ async function getBlockModel(blockName, assetsPath) {
     mergedModel = mergeObjects(mergedModel, childModel);
   }
 
+/**
+ * Retrieves the block model for the specified block name by getting all the parent models and merging them
+ *
+ * @param {string} blockName - The name of the block.
+ * @param {string} assetsPath - The path to the assets.
+ * @return {Promise<Object>} The merged block model.
+ */
+async function getBlockModel(blockName, assetsPath) {
+  const models = await getBlockModelParents(blockName);
+  const mergedModel = mergeBlockModels(models);
+
   return mergedModel;
 }
 
