@@ -569,7 +569,7 @@ async function main(file, options = {culling: "full"}) {
     */
     // Scale element sizes based on scale
     await blockModel.elements.map(element => {
-      function size(array) {
+      function scale(array) {
         return array.map(e => e/largestDimension);
       }
 
