@@ -365,6 +365,19 @@ const compareArrays = (a, b) =>
  */
 const removeNamespace = (string) => string.replace('minecraft:','');
 
+/**
+ * Retrieves the block model for the specified block name.
+ *
+ * @param {string} blockName - The name of the block.
+ * @param {string} assetsPath - The path to the assets directory.
+ * @return {Object} The block model as a JSON object.
+ */
+async function getBlockModel(blockName, assetsPath) {
+  const fullPath = path.normalize(`${blockModelsPath}/${blockName}.json`)
+  const buffer = await fs.readFile(fullPath);
+  return JSON.parse(buffer);
+}
+
 async function main(file, options = {culling: "full"}) {
 	const buffer = await fs.readFile(file);
 	const { parsed, type } = await nbt.parse(buffer);
