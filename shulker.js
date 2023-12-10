@@ -357,6 +357,12 @@ const SOLID = [
 const compareArrays = (a, b) =>
   a.length === b.length && a.every((element, index) => element === b[index]);
 
+/**
+ * Removes the 'minecraft:' namespace from a given string.
+ *
+ * @param {string} string - The string to remove the namespace from.
+ * @return {string} The string with the 'minecraft:' namespace removed.
+ */
 const removeNamespace = (string) => string.replace('minecraft:','');
 
 async function main(file, options = {culling: "full"}) {
