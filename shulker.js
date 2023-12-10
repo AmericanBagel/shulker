@@ -403,26 +403,47 @@ const mergeObjects = (...objects) => {
   }, {});
 };
 
-async function getBlockModel(blockName, assetsPath) {
-  let model = await getSingleBlockModel(blockName, assetsPath);
-  let parentModelNames = [];
+/**
+ * Retrieves an array of block models for the specified block name and its parents
+ *
+ * @param {string} blockName - The name of the block.
+ * @return {Promise<Object[]>} The array of block models.
+ */
+async function getBlockModelParents(blockName) {
+  let models = [];
+  let model = await getSingleBlockModel(blockName);
 
-  // Build a FILO list of parent models
   while (model.parent) {
+    // Clean up parent name
     const parentName = model.parent
       .replace(/(^minecraft:block\/)|(^block\/)/, '');
-    parentModelNames.push(parentName);
-    model = await getSingleBlockModel(parentName, assetsPath);
+    // Set new model to parent model
+    model = await getSingleBlockModel(parentName);
+    // Add model to start of models list. Highest ancestor goes first.
+    models.unshift(model);
   }
 
-  // Start with the highest parent model and merge with children
-  let mergedModel = model;
-  while (parentModelNames.length > 0) {
-    const childModelName = parentModelNames.pop();
-    const childModel = await getSingleBlockModel(childModelName, assetsPath);
-    // Assuming a merge function exists that merges child model into parent
-    mergedModel = mergeObjects(mergedModel, childModel);
+  // Add first descendant model to the end of the models list
+  models.push(await getSingleBlockModel(blockName));
+
+  // Return list of models from ancestor to descendent
+  return models;
+}
+
+/**
+ * Merges an array of objects starting from the first element, merging in pairs, to the last
+ *
+ * @param {Object[]} objects - The array of objects to merge.
+ * @return {Object} The merged object.
+ */
+function mergeBlockModels(objects) {
+  while (objects.length > 1) {
+    const merge = mergeObjects(objects[0], objects[1]);
+    objects.splice(0, 2, merge);
   }
+
+  return objects[0];
+}
 
 /**
  * Retrieves the block model for the specified block name by getting all the parent models and merging them
