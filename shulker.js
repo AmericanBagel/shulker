@@ -1,6 +1,10 @@
 const fs = require('fs/promises');
 const createWriteStream = require('fs').createWriteStream;
+const path = require('path');
 const nbt = require('prismarine-nbt');
+
+const assetsPath = path.normalize("mcmeta/assets")
+const blockModelsPath = path.normalize(assetsPath + "/minecraft/models/block")
 
 const INVISIBLE = [
   "air",
@@ -422,11 +426,14 @@ async function main(file, options = {culling: "full"}) {
   */
 
   // Add name field to block because states are annoying
-  structure.blocks.forEach(block => {
-    block.name = structure.palette[block.state].Name;
-  })
+  async function addNamesToBlocks () {
+    await structure.blocks.forEach(block => {
+      block.name = structure.palette[block.state].Name;
+    })
+  }
+  await addNamesToBlocks();
 
-  function cullInvisible() {
+  async function cullInvisible() {
     /// Filter out culled blocks
     structure.blocks = structure.blocks.filter(block => !INVISIBLE.includes(removeNamespace(block.name)))
     structure.palette = structure.palette.filter(block => !INVISIBLE.includes(removeNamespace(block.Name)));
@@ -435,9 +442,11 @@ async function main(file, options = {culling: "full"}) {
   function cullEnclosed() {
     // Cull blocks which are surrounded by solid blocks on all faces
     structure.blocks = structure.blocks.filter(block => {
+      console.log(block);
       const getBlock = pos => structure.blocks.find(b => compareArrays(b.pos, pos));
       const isSolid = block => SOLID.includes(removeNamespace(block.name));
 
+      console.log(JSON.stringify(structure.blocks, null, 2));
       // Cull blocks which are surrounded by solid blocks on all faces
       structure.blocks = structure.blocks.filter(block => {
         // Check if all adjacent faces of the block are solid
@@ -455,22 +464,22 @@ async function main(file, options = {culling: "full"}) {
     })
   }
 
-  function cull() {
+  async function cull() {
     if (options.culling.includes["invisible"] || options.culling === "full") {
-      cullInvisible();
+      await cullInvisible();
     }
     if (options.culling.includes["enclosed"] || options.culling === "full") {
-      cullEnclosed();
+      // await cullEnclosed();
     }
   }
 
   // Cull if enabled
   if ((options.culling != null && options.culling != undefined && options.culling.length) || options.culling === "full") {
-    cull();
+    await cull();
   }
 
   structure.palette.forEach(blockState => {
-    console.log(blockState)
+    console.log(blockState);
   })
 }
 
