@@ -1,0 +1,15 @@
+- [x] Make a list of all the block types
+- [/] Cull blocks:
+    - [x] Cull any blocks with a state id that matches any block state's ID in the pallete which matches one of the hard-coded ignored blocks (e.g. air)
+    - [x] Cull any blocks which are completely surrounded by opaque blocks (should get rid of filled-in area blocks and just leave perimeter in, for example, the ground)
+    - [ ] Add advanced culling methods later -- these two methods should get rid of over 50% of the lag
+- [ ] For each block type/state (by block type to only have to grab the model once!):
+    - [x] Grab the block model
+    - [x] Merge any parent models
+    - [x] Scale element sizes (from, to) based on scale
+    - [x] Add block model name prefix to each of the textures
+    - [x] Push textures to model's textures
+    - [x] Map the textures in the current block model to add the prefix
+    - [x] For each block in block states:
+    - [x] Offset (add) element positions the block's position in the structure
+    - [x] Add elements
