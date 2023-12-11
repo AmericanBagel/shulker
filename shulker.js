@@ -357,6 +357,20 @@ const compareArrays = (a, b) =>
   a.length === b.length && a.every((element, index) => element === b[index])
 
 /**
+ * Adds a prefix to each key in the given object.
+ *
+ * @param {Object} object - The object to modify.
+ * @param {string} prefix - The prefix to add to each key.
+ * @return {Object} - The modified object with prefixed keys.
+ */
+function addPrefixToKeys(object, prefix) {
+  return Object.keys(object).reduce((result, key) => {
+      result[prefix + key] = object[key];
+      return result;
+  }, {});
+}
+
+/**
  * Removes the 'minecraft:' namespace from a given string.
  *
  * @param {string} string - The string to remove the namespace from.
@@ -544,10 +558,10 @@ async function main (file, options = { culling: ['invisible'] }) {
   }
 
   async function cull () {
-    if (options.culling.includes("invisible") || options.culling === 'full') {
+    if (options.culling.includes('invisible') || options.culling === 'full') {
       await cullInvisible()
     }
-    if (options.culling.includes("enclosed") || options.culling === 'full') {
+    if (options.culling.includes('enclosed') || options.culling === 'full') {
       await cullEnclosed()
     }
   }
@@ -563,7 +577,7 @@ async function main (file, options = { culling: ['invisible'] }) {
   }
 
   // Processing for each block state
-  await structure.palette.forEach(async (blockState) => {
+  await Promise.all(structure.palette.map(async (blockState) => {
     // Retrieve block model with parents merged
     const blockModel = await getBlockModel(
       removeNamespace(blockState.Name),
@@ -596,24 +610,35 @@ async function main (file, options = { culling: ['invisible'] }) {
       return element
     })
 
-    // Add block model name prefix to the key of the textures, e.g. "bottom" => "dirt_bottom"
-    blockModel.textures = Object.keys(blockModel.textures).reduce(
-      (obj, key) => {
-        obj[removeNamespace(blockState.Name) + key] = blockModel.textures[key]
-        return obj
+    // Remove "particle" texture if it exists
+    if ('particle' in blockModel.textures) {
+      delete blockModel.textures.particle;
+    }
+
+    // Add block state name prefix to the key of the textures, e.g. "bottom" => "dirt_bottom"
+    blockModel.textures = addPrefixToKeys(blockModel.textures, removeNamespace(blockState.Name) + '_');
+
+    // Textures can reference other textures by starting a value with '#', e.g. "bottom": "#all" would make the bottom texture equal to the texture with the #all value
+    // Because of this, we need to add the prefix to values starting with '#'
+    for (let key in blockModel.textures) {
+      if (blockModel.textures[key].startsWith('#')) {
+        const newValue = `#${removeNamespace(blockState.Name)}_${blockModel.textures[key].substring(1)}`
+        blockModel.textures[key] = newValue;
       }
-    )
+    }
 
     // Add all block model texture properties to model's textures object
     Object.keys(blockModel.textures).forEach((key) => {
-      structure.textures[key] = blockModel.textures[key]
+      model.textures[key] = blockModel.textures[key]
     })
 
     // TODO: Deal with block state properties including rotation
 
     // Add block model to block state
     blockState.model = blockModel
-  })
+  }))
+
+  console.log(JSON.stringify(structure.palette));
 
   /*
   Models look like this:
@@ -624,9 +649,11 @@ async function main (file, options = { culling: ['invisible'] }) {
   }
   ```
   */
+
   // Manage individual blocks and add them to model
-  /* await structure.blocks.forEach(block => {
-    // WARNING: If you want to optimize something, OPTIMIZE THIS!
+  await structure.blocks.forEach(block => {
+
+    /* // WARNING: If you want to optimize something, OPTIMIZE THIS!
     // Deep cloning for each block is a HORRIBLE idea. TODO: Replace deep cloning whole block model with just cloning elements
     const blockState = _.cloneDeep(structure.palette[block.state]);
 
@@ -641,8 +668,8 @@ async function main (file, options = { culling: ['invisible'] }) {
 
       // Add block state elements to block model elements
       model.elements.push(...blockState.elements);
-    })
-  }); */
+    }) */
+  });
 }
 
 main('structure.nbt')
