@@ -372,7 +372,7 @@ async function addNamesToBlocks (structure) {
  *
  * @return {Promise<void>} This function does not return anything.
  */
-async function cullInvisible () {
+async function cullInvisible (structure) {
   /// Filter out culled blocks
   structure.blocks = structure.blocks.filter(
     (block) => !INVISIBLE.includes(removeNamespace(block.name))
@@ -387,7 +387,7 @@ async function cullInvisible () {
  *
  * @return {Promise<void>} The function does not return anything.
  */
-async function cullEnclosed () {
+async function cullEnclosed (structure) {
   // Cull blocks which are surrounded by solid blocks on all faces
   structure.blocks = structure.blocks.filter((block) => {
     const getBlock = (pos) =>
@@ -418,15 +418,15 @@ async function cullEnclosed () {
  *     Alternatively, 'full' as a string can be provided to use all the above techniques.
  * @return {Promise<void>} A Promise that resolves once the culling is complete.
  */
-async function cull() {
+async function cull(structure, options) {
   const shouldCullInvisible = options.culling.includes('invisible') || options.culling === 'full'
   const shouldCullEnclosed = options.culling.includes('enclosed') || options.culling === 'full'
 
   if (shouldCullInvisible) {
-    await cullInvisible()
+    await cullInvisible(structure)
   }
   if (shouldCullEnclosed) {
-    await cullEnclosed()
+    await cullEnclosed(structure)
   }
 }
 
