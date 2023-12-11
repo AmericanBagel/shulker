@@ -4,7 +4,10 @@
   "description": "A CLI tool for converting Minecraft structures to block models",
   "main": "shulker.js",
   "scripts": {
-    "test": "node shulker.js"
+    "test": "node shulker.js",
+    "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
+    "lint": "npx eslint \"./**.js\" --cache --cache-strategy content --fix",
+    "find-solid": "node dev/find_solid.js | xclip -selection clipboard"
   },
   "keywords": [
     "minecraft",
@@ -20,8 +23,25 @@
   "author": "AmericanBagel",
   "license": "ISC",
   "dependencies": {
+    "eslint-config-prettier": "^9.1.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.21",
-    "prismarine-nbt": "^2.2.1"
-  }
+    "prismarine-nbt": "^2.2.1",
+    "snazzy": "^9.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.3.1",
+    "eslint-plugin-promise": "^6.1.1",
+    "prettier": "^3.1.1",
+    "standardx": "^7.0.0"
+  },
+  "eslintConfig": {
+    "rules": {
+      "no-unused-vars": "off"
+    }
+  },
+  "pre-commit": ["precommit-msg", "lint"]
 }
