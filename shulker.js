@@ -356,7 +356,11 @@ const SOLID = [
 const compareArrays = (a, b) =>
   a.length === b.length && a.every((element, index) => element === b[index])
 
-// Add name field to block because states are annoying
+/**
+ * Add block names to blocks because state ids are annoying.
+ *
+ * @return {Promise<void>} This function does not return anything.
+ */
 async function addNamesToBlocks () {
   await structure.blocks.forEach((block) => {
     block.name = structure.palette[block.state].Name
