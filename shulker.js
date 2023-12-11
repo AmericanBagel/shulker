@@ -408,6 +408,16 @@ async function cullEnclosed () {
   })
 }
 
+/**
+ * Culls elements using different techniques based on provided options.
+ *
+ * @param {string[] | 'full'} options - The options for culling. Possible options are:
+ *   - culling: An array of strings specifying the types of culling. Possible values are:
+ *     - 'invisible': Culls only invisible elements.
+ *     - 'enclosed': Culls only enclosed elements.
+ *     Alternatively, 'full' as a string can be provided to use all the above techniques.
+ * @return {Promise<void>} A Promise that resolves once the culling is complete.
+ */
 async function cull() {
   const shouldCullInvisible = options.culling.includes('invisible') || options.culling === 'full'
   const shouldCullEnclosed = options.culling.includes('enclosed') || options.culling === 'full'
