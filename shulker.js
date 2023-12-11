@@ -382,6 +382,11 @@ async function cullInvisible () {
   )
 }
 
+/**
+ * Culls blocks which are surrounded by solid blocks on all faces.
+ *
+ * @return {Promise<void>} The function does not return anything.
+ */
 async function cullEnclosed () {
   // Cull blocks which are surrounded by solid blocks on all faces
   structure.blocks = structure.blocks.filter((block) => {
