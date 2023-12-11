@@ -361,7 +361,7 @@ const compareArrays = (a, b) =>
  *
  * @return {Promise<void>} This function does not return anything.
  */
-async function addNamesToBlocks () {
+async function addNamesToBlocks (structure) {
   await structure.blocks.forEach((block) => {
     block.name = structure.palette[block.state].Name
   })
