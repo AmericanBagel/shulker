@@ -356,6 +356,56 @@ const SOLID = [
 const compareArrays = (a, b) =>
   a.length === b.length && a.every((element, index) => element === b[index])
 
+// Add name field to block because states are annoying
+async function addNamesToBlocks () {
+  await structure.blocks.forEach((block) => {
+    block.name = structure.palette[block.state].Name
+  })
+}
+
+async function cullInvisible () {
+  /// Filter out culled blocks
+  structure.blocks = structure.blocks.filter(
+    (block) => !INVISIBLE.includes(removeNamespace(block.name))
+  )
+  structure.palette = structure.palette.filter(
+    (block) => !INVISIBLE.includes(removeNamespace(block.Name))
+  )
+}
+
+async function cullEnclosed () {
+  // Cull blocks which are surrounded by solid blocks on all faces
+  structure.blocks = structure.blocks.filter((block) => {
+    const getBlock = (pos) =>
+      structure.blocks.find((b) => compareArrays(b.pos, pos))
+    const isSolid = (block) => SOLID.includes(removeNamespace(block.name))
+
+    // Check if all adjacent faces of the block are solid
+    const adjacentPositions = [
+      [block.pos[0] - 1, block.pos[1], block.pos[2]],
+      [block.pos[0] + 1, block.pos[1], block.pos[2]],
+      [block.pos[0], block.pos[1] - 1, block.pos[2]],
+      [block.pos[0], block.pos[1] + 1, block.pos[2]],
+      [block.pos[0], block.pos[1], block.pos[2] - 1],
+      [block.pos[0], block.pos[1], block.pos[2] + 1]
+    ]
+    // Return false if surrounded
+    return !adjacentPositions.every((pos) => isSolid(getBlock(pos)))
+  })
+}
+
+async function cull() {
+  const shouldCullInvisible = options.culling.includes('invisible') || options.culling === 'full'
+  const shouldCullEnclosed = options.culling.includes('enclosed') || options.culling === 'full'
+
+  if (shouldCullInvisible) {
+    await cullInvisible()
+  }
+  if (shouldCullEnclosed) {
+    await cullEnclosed()
+  }
+}
+
 /**
  * Adds a prefix to each key in the given object.
  *
@@ -628,57 +678,7 @@ async function main (file, options = { culling: ['invisible'] }) {
         - [x] Offset (add) element positions the block's position in the structure
         - [x] Add elements
   */
-
-  // Add name field to block because states are annoying
-  async function addNamesToBlocks () {
-    await structure.blocks.forEach((block) => {
-      block.name = structure.palette[block.state].Name
-    })
-  }
   await addNamesToBlocks()
-
-  async function cullInvisible () {
-    /// Filter out culled blocks
-    structure.blocks = structure.blocks.filter(
-      (block) => !INVISIBLE.includes(removeNamespace(block.name))
-    )
-    structure.palette = structure.palette.filter(
-      (block) => !INVISIBLE.includes(removeNamespace(block.Name))
-    )
-  }
-
-  async function cullEnclosed () {
-    // Cull blocks which are surrounded by solid blocks on all faces
-    structure.blocks = structure.blocks.filter((block) => {
-      const getBlock = (pos) =>
-        structure.blocks.find((b) => compareArrays(b.pos, pos))
-      const isSolid = (block) => SOLID.includes(removeNamespace(block.name))
-
-      // Check if all adjacent faces of the block are solid
-      const adjacentPositions = [
-        [block.pos[0] - 1, block.pos[1], block.pos[2]],
-        [block.pos[0] + 1, block.pos[1], block.pos[2]],
-        [block.pos[0], block.pos[1] - 1, block.pos[2]],
-        [block.pos[0], block.pos[1] + 1, block.pos[2]],
-        [block.pos[0], block.pos[1], block.pos[2] - 1],
-        [block.pos[0], block.pos[1], block.pos[2] + 1]
-      ]
-      // Return false if surrounded
-      return !adjacentPositions.every((pos) => isSolid(getBlock(pos)))
-    })
-  }
-
-  async function cull() {
-    const shouldCullInvisible = options.culling.includes('invisible') || options.culling === 'full'
-    const shouldCullEnclosed = options.culling.includes('enclosed') || options.culling === 'full'
-
-    if (shouldCullInvisible) {
-      await cullInvisible()
-    }
-    if (shouldCullEnclosed) {
-      await cullEnclosed()
-    }
-  }
 
   // Cull if enabled
   const shouldCull = options.culling !== null && options.culling !== undefined && options.culling.length || options.culling === 'full'
