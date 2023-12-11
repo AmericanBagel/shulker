@@ -367,6 +367,11 @@ async function addNamesToBlocks () {
   })
 }
 
+/**
+ * Filter out culled blocks.
+ *
+ * @return {Promise<void>} This function does not return anything.
+ */
 async function cullInvisible () {
   /// Filter out culled blocks
   structure.blocks = structure.blocks.filter(
