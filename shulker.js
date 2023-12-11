@@ -460,7 +460,7 @@ async function getBlockModel (blockName, assetsPath) {
   return mergedModel
 }
 
-async function main (file, options = { culling: 'full' }) {
+async function main (file, options = { culling: ['invisible'] }) {
   const buffer = await fs.readFile(file)
   const { parsed, type } = await nbt.parse(buffer)
   const structure = await nbt.simplify(parsed)
