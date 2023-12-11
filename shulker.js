@@ -474,6 +474,117 @@ async function getBlockModel (blockName, assetsPath) {
   return mergedModel
 }
 
+/**
+ * Processes the block state by performing various operations on it.
+ *
+ * @param {object} blockState - The block state object to process.
+ * @param {string} assetsPath - The path to the assets.
+ * @param {object} structure - The structure object.
+ * @param {object} model - The model object.
+ */
+async function processBlockState(blockState, assetsPath, structure, model) {
+  const blockName = removeNamespace(blockState.Name);
+  const blockModel = await getBlockModel(blockName, assetsPath);
+  const largestDimension = Math.max(...structure.size);
+
+  scaleElementSizes(blockModel.elements, largestDimension);
+  removeParticleTexture(blockModel.textures);
+  addPrefixToTextureKeys(blockModel.textures, blockName);
+  updateTextureReferences(blockModel.textures, blockName);
+  addTexturesToModel(blockModel.textures, model);
+
+  blockState.model = blockModel;
+}
+
+/**
+ * Scales the sizes of the given elements based on the largest dimension.
+ *
+ * @param {Array} elements - An array of elements to scale.
+ * @param {number} largestDimension - The largest dimension to scale the elements to.
+ */
+function scaleElementSizes(elements, largestDimension) {
+  elements.forEach((element) => {
+    element.from = scale(element.from, largestDimension);
+    element.to = scale(element.to, largestDimension);
+  });
+}
+
+/**
+ * Scales the elements in the array by dividing each element by the largest dimension.
+ *
+ * @param {Array} array - The array to be scaled.
+ * @param {number} largestDimension - The largest dimension used to scale the array.
+ * @return {Array} - The scaled array.
+ */
+function scale(array, largestDimension) {
+  return array.map((e) => e / largestDimension);
+}
+
+/**
+ * Removes the particle texture from the given textures object, if it exists.
+ *
+ * @param {object} textures - The textures object from which to remove the particle texture.
+ */
+function removeParticleTexture(textures) {
+  if ('particle' in textures) {
+    delete textures.particle;
+  }
+}
+
+/**
+ * Adds a prefix to the keys of a textures object.
+ *
+ * @param {object} textures - The textures object.
+ * @param {string} prefix - The prefix to add to the keys.
+ */
+function addPrefixToTextureKeys(textures, prefix) {
+  for (let key in textures) {
+    textures[prefix + '_' + key] = textures[key];
+    delete textures[key];
+  }
+}
+
+/**
+ * Updates the references to textures in the given object.
+ *
+ * @param {Object} textures - The object containing the texture references to update.
+ * @param {string} blockName - The name of the block.
+ */
+function updateTextureReferences(textures, blockName) {
+  for (let key in textures) {
+    if (textures[key].startsWith('#')) {
+      const newValue = `#${blockName}_${textures[key].substring(1)}`;
+      textures[key] = newValue;
+    }
+  }
+}
+
+/**
+ * Adds textures to a model.
+ *
+ * @param {object} textures - The textures to add to the model.
+ * @param {object} model - The model to add the textures to.
+ */
+function addTexturesToModel(textures, model) {
+  Object.assign(model.textures, textures);
+}
+
+/**
+ * Process the block states of a structure.
+ *
+ * @param {Object} structure - The structure to process.
+ * @param {string} assetsPath - The path to the assets.
+ * @param {Object} model - The model to use.
+ * @return {Promise<void>} A promise that resolves when all block states are processed.
+ */
+async function processBlockStates(structure, assetsPath, model) {
+  await Promise.all(
+    structure.palette.map(async (blockState) => {
+      await processBlockState(blockState, assetsPath, structure, model);
+    })
+  );
+}
+
 async function main (file, options = { culling: ['invisible'] }) {
   const buffer = await fs.readFile(file)
   const { parsed, type } = await nbt.parse(buffer)
@@ -577,66 +688,7 @@ async function main (file, options = { culling: ['invisible'] }) {
   }
 
   // Processing for each block state
-  await Promise.all(structure.palette.map(async (blockState) => {
-    // Retrieve block model with parents merged
-    const blockModel = await getBlockModel(
-      removeNamespace(blockState.Name),
-      assetsPath
-    )
-
-    const largestDimension = Math.max(...structure.size)
-
-    /**
-     * Whole block model needs to fit within 16^3.
-     * There are `largestDimension` number of blocks in the structure to put into the model
-     * Block models are currently on a scale of 16x16x16, and need to be divided by largestDimension to fit within 16^3
-     * Maybe the model size can be scaled to 48^3 (or 3^3 blocks), but this is not necessary right now -- scaling can be done in display options
-     */
-    // Scale element sizes based on scale
-    await blockModel.elements.map((element) => {
-      function scale (array) {
-        return array.map((e) => e / largestDimension)
-      }
-
-      element.from = scale(element.from)
-      element.to = scale(element.to)
-
-      // Scale UV quadruple based on scale
-      /* if (element.faces) {
-        Object.keys(element.faces).forEach(face => {
-          element.faces[face].uv = scale(element.faces[face].uv);
-        })
-      } */
-      return element
-    })
-
-    // Remove "particle" texture if it exists
-    if ('particle' in blockModel.textures) {
-      delete blockModel.textures.particle;
-    }
-
-    // Add block state name prefix to the key of the textures, e.g. "bottom" => "dirt_bottom"
-    blockModel.textures = addPrefixToKeys(blockModel.textures, removeNamespace(blockState.Name) + '_');
-
-    // Textures can reference other textures by starting a value with '#', e.g. "bottom": "#all" would make the bottom texture equal to the texture with the #all value
-    // Because of this, we need to add the prefix to values starting with '#'
-    for (let key in blockModel.textures) {
-      if (blockModel.textures[key].startsWith('#')) {
-        const newValue = `#${removeNamespace(blockState.Name)}_${blockModel.textures[key].substring(1)}`
-        blockModel.textures[key] = newValue;
-      }
-    }
-
-    // Add all block model texture properties to model's textures object
-    Object.keys(blockModel.textures).forEach((key) => {
-      model.textures[key] = blockModel.textures[key]
-    })
-
-    // TODO: Deal with block state properties including rotation
-
-    // Add block model to block state
-    blockState.model = blockModel
-  }))
+  await processBlockStates(structure, assetsPath, model);
 
   console.log(JSON.stringify(structure.palette));
 
