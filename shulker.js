@@ -544,10 +544,10 @@ async function main (file, options = { culling: 'full' }) {
   }
 
   async function cull () {
-    if (options.culling.includes.invisible || options.culling === 'full') {
+    if (options.culling.includes("invisible") || options.culling === 'full') {
       await cullInvisible()
     }
-    if (options.culling.includes.enclosed || options.culling === 'full') {
+    if (options.culling.includes("enclosed") || options.culling === 'full') {
       await cullEnclosed()
     }
   }
