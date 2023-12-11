@@ -668,22 +668,21 @@ async function main (file, options = { culling: ['invisible'] }) {
     })
   }
 
-  async function cull () {
-    if (options.culling.includes('invisible') || options.culling === 'full') {
+  async function cull() {
+    const shouldCullInvisible = options.culling.includes('invisible') || options.culling === 'full'
+    const shouldCullEnclosed = options.culling.includes('enclosed') || options.culling === 'full'
+
+    if (shouldCullInvisible) {
       await cullInvisible()
     }
-    if (options.culling.includes('enclosed') || options.culling === 'full') {
+    if (shouldCullEnclosed) {
       await cullEnclosed()
     }
   }
 
   // Cull if enabled
-  if (
-    (options.culling !== null &&
-      options.culling !== undefined &&
-      options.culling.length) ||
-    options.culling === 'full'
-  ) {
+  const shouldCull = options.culling !== null && options.culling !== undefined && options.culling.length || options.culling === 'full'
+  if (shouldCull) {
     await cull()
   }
 
